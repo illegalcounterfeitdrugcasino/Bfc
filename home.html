@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Bitflash Cartel">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" href="/apple-touch-icon.png">
+    <title>Bitflash Cartel</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a0d2e, #4a0072);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        #admin-screen, #popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.98);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 20000;
+        }
+        #admin-content {
+            background: #fff;
+            color: #000;
+            padding: 40px;
+            border-radius: 25px;
+            max-width: 1200px;
+            overflow-y: auto;
+            max-height: 90%;
+            box-shadow: 0 0 40px #ff00ff;
+        }
+        #main-container {
+            width: 100%;
+            max-width: 1600px;
+            margin: 25px auto;
+            padding: 35px;
+            background: rgba(0, 0, 0, 0.92);
+            border-radius: 30px;
+            box-shadow: 0 0 50px #ff00ff, 0 0 100px #00ffff;
+        }
+        #header { text-align: center; padding: 30px; background: linear-gradient(90deg, #ff00ff, #00ffff); border-radius: 25px; }
+        #header h1 { font-size: 48px; text-transform: uppercase; letter-spacing: 4px; }
+        #admin-btn { position: absolute; top: 20px; right: 20px; padding: 10px 20px; background: #00ffff; border: none; border-radius: 10px; color: #fff; cursor: pointer; }
+        #admin-btn:hover { background: #ff00ff; transform: scale(1.05); }
+        .section { padding: 25px; background: rgba(255, 255, 255, 0.15); border-radius: 20px; box-shadow: 0 0 25px #ff00ff; margin-bottom: 20px; }
+        .section h2 { font-size: 24px; margin-bottom: 20px; }
+        .item-list { display: flex; flex-wrap: wrap; gap: 20px; }
+        .item { padding: 15px; background: linear-gradient(45deg, #ff00ff, #00ffff); border-radius: 12px; font-size: 18px; cursor: pointer; width: calc(25% - 20px); }
+        .item:hover { transform: scale(1.05); box-shadow: 0 0 20px #00ffff; }
+        form { display: flex; flex-direction: column; gap: 15px; }
+        input, textarea, select { padding: 12px; font-size: 16px; background: #333; border: none; border-radius: 10px; color: #fff; }
+        button { padding: 15px 30px; font-size: 18px; background: #ff00ff; border: none; border-radius: 10px; color: #fff; cursor: pointer; }
+        button:hover { background: #00ffff; transform: scale(1.05); }
+        .small-btn { padding: 8px 16px; font-size: 14px; }
+        #heist-map { height: 300px; background: #111; border-radius: 15px; position: relative; }
+        .heist-dot { position: absolute; width: 10px; height: 10px; background: #ff00ff; border-radius: 50%; box-shadow: 0 0 10px #ff00ff; transition: all 2s ease; }
+        #news-feed, #email-list, #leaderboard-list, #fleet-list, #mission-list, #missions-active-list, #aircraft-list, #auction-list { max-height: 300px; overflow-y: auto; }
+        .news-item, .email-item, .leader-item, .fleet-item, .mission-item, .active-mission, .aircraft-item, .auction-item { padding: 15px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; margin: 10px 0; }
+        .progress-bar { width: 100%; height: 20px; background: #333; border-radius: 10px; overflow: hidden; }
+        .progress { height: 100%; background: #ff00ff; transition: width 1s linear; }
+        #popup { padding: 50px; border-radius: 25px; max-width: 800px; text-align: center; }
+        #popup p { font-size: 22px; margin-bottom: 30px; }
+        #popup select { margin: 10px 0; width: 80%; }
+        #heat-meter { width: 100%; height: 20px; background: #333; border-radius: 10px; }
+        #heat-progress { height: 100%; background: #ff0000; }
+        @media (max-width: 768px) { .item { width: calc(50% - 20px); } #heist-map { height: 200px; } }
+    </style>
+</head>
+<body>
+    <div id="admin-screen">
+        <div id="admin-content">
+            <h1>Admin Mode</h1>
+            <label>Bitflash Bucks:</label><input id="admin-bucks" type="number">
+            <label>Vault Balance:</label><input id="admin-vault" type="number">
+            <label>Cartel Codes (one per line):</label><textarea id="admin-codes"></textarea>
+            <label>News Headlines (one per line):</label><textarea id="admin-news"></textarea>
+            <label>Fleet (name, type, cargo, heat):</label><textarea id="admin-fleet"></textarea>
+            <label>Missions (name, location, cargo, reward):</label><textarea id="admin-missions"></textarea>
+            <label>AI Aggression (1-10):</label><input id="admin-ai" type="number" min="1" max="10">
+            <button onclick="saveAdminSettings()">Save</button>
+            <button onclick="exitAdminMode()">Back</button>
+        </div>
+    </div>
+    <div id="main-container">
+        <div id="header">
+            <h1>Bitflash Cartel</h1>
+            <p>Rule the Underworld</p>
+            <button id="admin-btn" onclick="openAdmin()">Admin</button>
+        </div>
+        <div class="section" id="manifesto">
+            <h2>Our Empire</h2>
+            <p>1M tons smuggled, 500 planes airborne, dark web overlords. Join or die.</p>
+        </div>
+        <div class="section" id="shop">
+            <h2>Black Market</h2>
+            <div class="item-list" id="shop-list"></div>
+        </div>
+        <div class="section" id="aircraft-shop">
+            <h2>Aircraft Shop</h2>
+            <div id="aircraft-list"></div>
+        </div>
+        <div class="section" id="upgrades">
+            <h2>Cartel Upgrades</h2>
+            <div class="item-list" id="upgrade-list"></div>
+        </div>
+        <div class="section" id="recruit">
+            <h2>Join the Cartel</h2>
+            <form id="recruit-form">
+                <input id="recruit-name" placeholder="Name" required>
+                <input id="recruit-email" type="email" placeholder="Email" required>
+                <textarea id="recruit-skills" placeholder="Skills (e.g., smuggling, hacking)" required></textarea>
+                <button type="button" onclick="submitRecruit()">Apply</button>
+            </form>
+        </div>
+        <div class="section" id="emails">
+            <h2>Cartel Comms</h2>
+            <div id="email-list"></div>
+            <form id="email-compose">
+                <input id="email-to" placeholder="To (e.g., Pablo, El Jefe)">
+                <textarea id="email-message" placeholder="Message"></textarea>
+                <button type="button" onclick="sendEmail()">Send</button>
+            </form>
+        </div>
+        <div class="section" id="drug-runs">
+            <h2>Drug Runs</h2>
+            <select id="mission-filter" onchange="initDrugRuns()">
+                <option value="All">All Missions</option>
+                <option value="Smuggling">Smuggling</option>
+                <option value="Cash Haul">Cash Haul</option>
+                <option value="VIP Drop">VIP Drop</option>
+                <option value="Hijack">Hijack</option>
+                <option value="Extraction">Extraction</option>
+                <option value="Sabotage">Sabotage</option>
+                <option value="Decoy Run">Decoy Run</option>
+                <option value="Bulk Haul">Bulk Haul</option>
+                <option value="Border Dash">Border Dash</option>
+            </select>
+            <div class="item-list" id="mission-list"></div>
+            <button onclick="startMissionPrompt()">Start a Run</button>
+            <p>Weather: <span id="weather-forecast">Clear</span> <button onclick="buyWeatherRadar()">Radar ($2000)</button></p>
+        </div>
+        <div class="section" id="missions-active">
+            <h2>Mission Status</h2>
+            <div id="missions-active-list"></div>
+        </div>
+        <div class="section" id="fleet">
+            <h2>Fleet Management</h2>
+            <div id="fleet-list"></div>
+            <button onclick="buyInsurance()">Buy Insurance ($1000)</button>
+        </div>
+        <div class="section" id="heat">
+            <h2>DEA Heat</h2>
+            <div id="heat-meter"><div id="heat-progress" style="width: 0%"></div></div>
+            <p id="heat-level">Heat: 0%</p>
+            <button onclick="bribeDEA()">Bribe DEA ($1000-$5000)</button>
+        </div>
+        <div class="section" id="heist">
+            <h2>Live Heist Tracker</h2>
+            <div id="heist-map"></div>
+            <button onclick="fundHeist()">Fund Heist ($50)</button>
+        </div>
+        <div class="section" id="news">
+            <h2>Cartel News</h2>
+            <div id="news-feed"></div>
+        </div>
+        <div class="section" id="launder">
+            <h2>Crypto Laundering</h2>
+            <form id="launder-form">
+                <input id="launder-amount" type="number" placeholder="BTC Amount" required>
+                <button type="button" onclick="launderCrypto()">Launder</button>
+            </form>
+        </div>
+        <div class="section" id="vip">
+            <h2>VIP Membership</h2>
+            <div class="item-list" id="vip-tiers"></div>
+        </div>
+        <div class="section" id="bounty">
+            <h2>Bounty Board</h2>
+            <div class="item-list" id="bounty-list"></div>
+        </div>
+        <div class="section" id="auction">
+            <h2>Smuggler’s Auction</h2>
+            <div id="auction-list"></div>
+        </div>
+        <div class="section" id="codes">
+            <h2>Cartel Codes</h2>
+            <input id="code-input" placeholder="Enter Code">
+            <button onclick="submitCode()">Submit</button>
+            <div id="codes-list"></div>
+        </div>
+        <div class="section" id="vault">
+            <h2>Cartel Vault</h2>
+            <form id="vault-form">
+                <input id="vault-amount" type="number" placeholder="Deposit/Withdraw (BTC/Bucks)" required>
+                <button type="button" onclick="depositVault()">Deposit</button>
+                <button type="button" onclick="withdrawVault()">Withdraw</button>
+            </form>
+            <p id="vault-balance">Balance: 0</p>
+        </div>
+        <div class="section" id="radio">
+            <h2>Cartel Radio</h2>
+            <p>Now Playing: Narco Beats</p>
+            <button onclick="decodeRadio()">Decode Message ($10)</button>
+        </div>
+        <div class="section" id="leaderboard">
+            <h2>Top Cartel Earners</h2>
+            <div id="leaderboard-list"></div>
+        </div>
+    </div>
+    <div id="popup"></div>
+    <script>
+    let bitflashBucks = 0;
+    let vaultBalance = 0;
+    let deaHeat = 0;
+    let insuranceFlights = 0;
+    let weatherRadar = false;
+    let currentWeather = "Clear";
+    let cartelCodes = ["CARTEL50", "COKE100", "GOLDVIP"];
+    let shopItems = [
+        { name: "Gold AK-47", price: 500, desc: "Pure firepower" },
+        { name: "Coke Brick", price: 200, desc: "White gold" }
+    ];
+    let aircraftShop = [
+        { name: "Piper PA-28", usedPrice: 2000, newPrice: 5000, cargo: 30 },
+        { name: "Beechcraft Baron", usedPrice: 10000, newPrice: 20000, cargo: 100 },
+        { name: "Cessna 172", usedPrice: 3000, newPrice: 7000, cargo: 50 },
+        { name: "Cessna 208B", usedPrice: 8000, newPrice: 15000, cargo: 200 },
+        { name: "Learjet 45", usedPrice: 30000, newPrice: 60000, cargo: 500 },
+        { name: "Antonov An-2", usedPrice: 15000, newPrice: 25000, cargo: 800 },
+        { name: "Gulfstream G150", usedPrice: 40000, newPrice: 80000, cargo: 1000 },
+        { name: "Boeing 737-200", usedPrice: 50000, newPrice: 100000, cargo: 3000 },
+        { name: "Ilyushin IL-62", usedPrice: 60000, newPrice: 120000, cargo: 3500 },
+        { name: "Douglas DC-8", usedPrice: 70000, newPrice: 140000, cargo: 4000 },
+        { name: "Tupolev Tu-154", usedPrice: 55000, newPrice: 110000, cargo: 3200 },
+        { name: "Lockheed L-1011", usedPrice: 65000, newPrice: 130000, cargo: 3800 },
+        { name: "Boeing 727", usedPrice: 100000, newPrice: 200000, cargo: 4000 },
+        { name: "IL-76", usedPrice: 80000, newPrice: 150000, cargo: 5000 }
+    ];
+    let upgrades = [
+        { name: "Stealth Coating", price: 5000, desc: "-10% DEA risk" },
+        { name: "Cargo Bays", price: 3000, desc: "+50% cargo" },
+        { name: "Fake Transponder", price: 2000, desc: "Reset heat to 0" },
+        { name: "Armor Plating", price: 10000, desc: "-20% crash damage" },
+        { name: "Turbo Engines", price: 8000, desc: "+30% speed" },
+        { name: "Jammer", price: 6000, desc: "-25% DEA risk" },
+        { name: "Extra Fuel Tanks", price: 5000, desc: "+50% range" },
+        { name: "Night Vision", price: 4000, desc: "-15% weather risk" }
+    ];
+    let fleet = [
+        { name: "C172-Alpha", type: "Cessna 172", cargo: 50, heat: 10, status: "Ready", flights: 0, condition: { engines: 100, gear: 100, fuel: 100, hydraulics: 100, radar: 100, wings: 100, cockpit: 100 }, upgrades: [], pilot: null },
+        { name: "C208B-Bravo", type: "Cessna 208B", cargo: 200, heat: 20, status: "Ready", flights: 0, condition: { engines: 100, gear: 100, fuel: 100, hydraulics: 100, radar: 100, wings: 100, cockpit: 100 }, upgrades: [], pilot: null },
+        { name: "G150-Charlie", type: "Gulfstream G150", cargo: 1000, heat: 50, status: "Ready", flights: 0, condition: { engines: 100, gear: 100, fuel: 100, hydraulics: 100, radar: 100, wings: 100, cockpit: 100 }, upgrades: [], pilot: null }
+    ];
+    let pilots = [
+        { name: "Rico", cost: 1000, bonus: "speed", desc: "+20% speed" },
+        { name: "Sofia", cost: 1500, bonus: "stealth", desc: "-15% DEA risk" },
+        { name: "Carlos", cost: 500, bonus: "risky", desc: "10% betrayal chance" }
+    ];
+    let missions = [
+        { name: "Miami Smuggle", type: "Smuggling", location: "Miami", cargo: "50kg Coke", reward: 1000, risk: 30, distance: 500 },
+        { name: "Juarez Cash", type: "Cash Haul", location: "Juarez", cargo: "200k Cash", reward: 3000, risk: 40, distance: 800 },
+        { name: "Medellin VIP", type: "VIP Drop", location: "Medellin", cargo: "VIP", reward: 20000, risk: 80, distance: 1500 },
+        { name: "Zeta Hijack", type: "Hijack", location: "Texas", cargo: "IL-76 Plane", reward: 30000, risk: 70, distance: 1000 },
+        { name: "Bogota Extraction", type: "Extraction", location: "Bogota", cargo: "Pilot", reward: 15000, risk: 90, distance: 1200 },
+        { name: "Sinaloa Sabotage", type: "Sabotage", location: "Sinaloa", cargo: "Rival C208B", reward: 10000, risk: 60, distance: 900 },
+        { name: "Tijuana Decoy", type: "Decoy Run", location: "Tijuana", cargo: "Fake Coke", reward: 500, risk: 20, distance: 300 },
+        { name: "Caracas Bulk", type: "Bulk Haul", location: "Caracas", cargo: "2000kg Coke", reward: 50000, risk: 85, distance: 2000 },
+        { name: "Laredo Dash", type: "Border Dash", location: "Laredo", cargo: "20kg Weed", reward: 800, risk: 25, distance: 200 }
+    ];
+    let specialMissions = [
+        { name: "Steal the Jet", type: "Hijack", location: "Secret Airstrip", cargo: "Gulfstream G150 Plane", reward: 50000, risk: 75, distance: 800 },
+        { name: "Crash Drop", type: "Smuggling", location: "DEA Hotzone", cargo: "1000kg Coke", reward: 30000, risk: 60, distance: 600 },
+        { name: "Zeta Turncoat", type: "Hijack", location: "Zeta Base", cargo: "IL-76 Plane", reward: 60000, risk: 80, distance: 1200 }
+    ];
+    let missionsActive = [];
+    let auctions = [];
+    let bounties = [
+        { name: "Snitch #47", reward: 10000 },
+        { name: "Rival Pilot", reward: 25000 }
+    ];
+    let newsHeadlines = ["Cessna Evades DEA!", "Jet Bust in Dubai!"];
+    let vipTiers = [
+        { name: "Silver", price: 49, perk: "Basic Runs" },
+        { name: "Gold", price: 199, perk: "Jet Access" },
+        { name: "Cartel King", price: 999, perk: "All Planes" }
+    ];
+    let leaderboard = [
+        { name: "El Jefe", earnings: 1000000 },
+        { name: "Pablo X", earnings: 750000 }
+    ];
+    let emails = [];
+    let aiAggression = 5;
+    let vaultInterestRate = 0.1; // Default 10% of random gain
+
+    function initSite() {
+        initShop();
+        initAircraftShop();
+        initUpgrades();
+        initRecruit();
+        initDrugRuns();
+        initMissionsActive();
+        initFleet();
+        initAuction();
+        initHeist();
+        initHeat();
+        initNews();
+        initVip();
+        initBounty();
+        initCodes();
+        initVault();
+        initLeaderboard();
+        updateWeather();
+        startSpecialMissions();
+    }
+
+    function initShop() {
+        const shopList = document.getElementById("shop-list");
+        shopList.innerHTML = "";
+        shopItems.forEach(item => {
+            const div = document.createElement("div");
+            div.className = "item";
+            div.innerHTML = `${item.name} - ${item.price} Bucks<br>${item.desc}`;
+            div.onclick = () => buyItem(item);
+            shopList.appendChild(div);
+        });
+        pilots.forEach(pilot => {
+            const div = document.createElement("div");
+            div.className = "item";
+            div.innerHTML = `${pilot.name} (Pilot) - ${pilot.cost} Bucks<br>${pilot.desc}`;
+            div.onclick = () => hirePilot(pilot);
+            shopList.appendChild(div);
+        });
+    }
+
+    function buyItem(item) {
+        if (bitflashBucks >= item.price) {
+            bitflashBucks -= item.price;
+            showPopup(`Bought ${item.name}!`, "OK");
+        } else showPopup("Not enough Bucks!", "OK");
+    }
+
+    function initAircraftShop() {
+        const aircraftList = document.getElementById("aircraft-list");
+        aircraftList.innerHTML = "";
+        aircraftShop.forEach(plane => {
+            const div = document.createElement("div");
+            div.className = "aircraft-item";
+            div.innerHTML = `${plane.name} - Cargo: ${plane.cargo}kg<br>Used: $${plane.usedPrice} <button class="small-btn" onclick="buyAircraft('${plane.name}', 'used')">Buy Used</button> | New: $${plane.newPrice} <button class="small-btn" onclick="buyAircraft('${plane.name}', 'new')">Buy New</button>`;
+            aircraftList.appendChild(div);
+        });
+    }
+
+    function buyAircraft(type, condition) {
+        const planeData = aircraftShop.find(p => p.name === type);
+        const price = condition === "used" ? planeData.usedPrice : planeData.newPrice;
+        const conditionRange = 
+            type === "Boeing 737-200" ? [40, 70] : 
+            type === "Ilyushin IL-62" ? [30, 60] : 
+            type === "Douglas DC-8" ? [35, 65] : 
+            type === "Tupolev Tu-154" ? [40, 70] : 
+            type === "Lockheed L-1011" ? [30, 60] : 
+            [50, 80];
+        if (bitflashBucks >= price) {
+            bitflashBucks -= price;
+            const conditionStats = condition === "used" ? { 
+                engines: conditionRange[0] + Math.random() * (conditionRange[1] - conditionRange[0]), 
+                gear: conditionRange[0] + Math.random() * (conditionRange[1] - conditionRange[0]), 
+                fuel: conditionRange[0] + Math.random() * (conditionRange[1] - conditionRange[0]), 
+                hydraulics: conditionRange[0] + Math.random() * (conditionRange[1] - conditionRange[0]), 
+                radar: conditionRange[0] + Math.random() * (conditionRange[1] - conditionRange[0]), 
+                wings: conditionRange[0] + Math.random() * (conditionRange[1] - conditionRange[0]), 
+                cockpit: conditionRange[0] + Math.random() * (conditionRange[1] - conditionRange[0]) 
+            } : { engines: 100, gear: 100, fuel: 100, hydraulics: 100, radar: 100, wings: 100, cockpit: 100 };
+            fleet.push({ name: `${type}-${Math.random().toString(36).slice(2, 7)}`, type, cargo: planeData.cargo, heat: 10, status: "Ready", flights: 0, condition: conditionStats, upgrades: [], pilot: null });
+            showPopup(`Bought ${type} (${condition})!`, "OK");
+            initFleet();
+        } else showPopup("Not enough Bucks!", "OK");
+    }
+
+    function hirePilot(pilot) {
+        if (bitflashBucks >= pilot.cost) {
+            bitflashBucks -= pilot.cost;
+            const freePlane = fleet.find(p => !p.pilot && p.status === "Ready");
+            if (freePlane) {
+                freePlane.pilot = pilot.name;
+                showPopup(`${pilot.name} hired for ${freePlane.name}!`, "OK");
+                initFleet();
+            } else showPopup("No free planes!", "OK");
+        } else showPopup("Not enough Bucks!", "OK");
+    }
+
+    function initUpgrades() {
+        const upgradeList = document.getElementById("upgrade-list");
+        upgradeList.innerHTML = "";
+        upgrades.forEach(upgrade => {
+            const div = document.createElement("div");
+            div.className = "item";
+            div.innerHTML = `${upgrade.name} - ${upgrade.price} Bucks<br>${upgrade.desc}`;
+            div.onclick = () => buyUpgrade(upgrade);
+            upgradeList.appendChild(div);
+        });
+    }
+
+    function buyUpgrade(upgrade) {
+        showPopup(`Apply ${upgrade.name} to:<br><select id="upgrade-plane">${fleet.map(p => `<option value="${p.name}">${p.name}</option>`).join("")}</select>`, "Yes", "No", () => {
+            const planeName = document.getElementById("upgrade-plane").value;
+            const plane = fleet.find(p => p.name === planeName);
+            const cost = upgrade.price * (1 + plane.upgrades.length * 0.2);
+            if (bitflashBucks >= cost && !plane.upgrades.includes(upgrade.name) && plane.upgrades.length < 3) {
+                bitflashBucks -= cost;
+                plane.upgrades.push(upgrade.name);
+                if (upgrade.name === "Cargo Bays") plane.cargo *= 1.5;
+                if (upgrade.name === "Extra Fuel Tanks") plane.cargo += 100;
+                showPopup(`${upgrade.name} applied to ${plane.name}!`, "OK");
+                initFleet();
+            } else showPopup("Not enough Bucks, max upgrades reached, or already applied!", "OK");
+        });
+    }
+
+    function initRecruit() {
+        emails.push({ from: "El Jefe", subject: "Welcome", body: "Prove you’re no snitch, cabrón." });
+        updateEmails();
+    }
+
+    function submitRecruit() {
+        const name = document.getElementById("recruit-name").value;
+        const email = document.getElementById("recruit-email").value;
+        const skills = document.getElementById("recruit-skills").value.toLowerCase();
+        if (name && email && skills) {
+            let role = skills.includes("smug") ? "Smuggler" : skills.includes("hack") ? "Hacker" : "Grunt";
+            showPopup(`AI Review: ${role} potential detected. Processing...`, "OK");
+            setTimeout(() => {
+                const chance = Math.random() * 10 > aiAggression ? "Accepted" : "Rejected";
+                showPopup(`${chance}! ${chance === "Accepted" ? "Check email." : "Try again."}`, "OK");
+                if (chance === "Accepted") {
+                    emails.push({ from: "Cartel HR", subject: "Role Assigned", body: `${name}, you’re a ${role}. ${role === "Smuggler" ? "Take a C172 run." : role === "Hacker" ? "Unlock DEA alerts." : "Guard the stash."}` });
+                    updateEmails();
+                }
+            }, 2000);
+        }
+    }
+
+    function sendEmail() {
+        const to = document.getElementById("email-to").value.toLowerCase();
+        const message = document.getElementById("email-message").value.toLowerCase();
+        if (to && message) {
+            emails.push({ from: "You", subject: "Request", body: message, to });
+            showPopup("Sent! Awaiting reply...", "OK");
+            setTimeout(() => {
+                let reply;
+                if (message.includes("job") || message.includes("mission")) {
+                    const newMission = { name: `Custom Run ${missions.length + 1}`, type: "Smuggling", location: "LA", cargo: "75kg Coke", reward: 1500, risk: 40, distance: 600 };
+                    missions.push(newMission);
+                    initDrugRuns();
+                    reply = { from: "Rico the Pilot", body: `Got you a job, amigo. Check the Drug Runs—75kg to LA.` };
+                } else if (message.includes("plane") || message.includes("jet")) {
+                    reply = { from: "Pablo", body: `Want a DC-8? Check the shop or auction, amigo.` };
+                } else if (message.includes("bribe") || message.includes("dea")) {
+                    reply = { from: "Sofia the Fixer", body: `DEA’s at ${deaHeat}%. 500 Bucks to cool it—send it.` };
+                } else if (message.includes("where") || message.includes("cut")) {
+                    reply = { from: "El Jefe", body: `You asking about my cut? Deliver the 50kg from Miami first, or you’re out.` };
+                } else {
+                    reply = { from: "La Reina", body: `Keep it sharp, ${message.includes("help") ? "meet me in Medellin with 1M Bucks" : "prove you’re worth my time"}.` };
+                }
+                emails.push(reply);
+                updateEmails();
+            }, 3000);
+            document.getElementById("email-to").value = "";
+            document.getElementById("email-message").value = "";
+        }
+    }
+
+    function updateEmails() {
+        const emailList = document.getElementById("email-list");
+        emailList.innerHTML = "";
+        emails.forEach(email => {
+            const div = document.createElement("div");
+            div.className = "email-item";
+            div.innerHTML = `<strong>From: ${email.from}</strong><br>Subject: ${email.subject}<br>${email.body}`;
+            emailList.appendChild(div);
+        });
+        emailList.scrollTop = emailList.scrollHeight;
+    }
+
+    function initDrugRuns() {
+        const missionList = document.getElementById("mission-list");
+        const filter = document.getElementById("mission-filter").value;
+        missionList.innerHTML = "";
+        const filteredMissions = filter === "All" ? missions : missions.filter(m => m.type === filter);
+        filteredMissions.forEach(mission => {
+            const div = document.createElement("div");
+            div.className = "mission-item";
+            div.innerHTML = `${mission.name} (${mission.type}) - ${mission.location}<br>Cargo: ${mission.cargo} | Reward: ${mission.reward} Bucks | Risk: ${mission.risk}% | Distance: ${mission.distance}km`;
+            div.onclick = () => startMission(mission);
+            missionList.appendChild(div);
+        });
+    }
+
+    function startMissionPrompt() {
+        const missionOptions = missions.map(m => {
+            const cargoWeight = parseInt(m.cargo) || (m.type === "VIP Drop" || m.type === "Extraction" ? 100 : m.type === "Decoy Run" ? 50 : m.type === "Hijack" ? 0 : 200);
+            return `<option value="${m.name}">${m.name} (${m.location}) - Reward: ${m.reward} Bucks | Risk: ${m.risk}% | Cargo: ${m.type === "Hijack" ? m.cargo : cargoWeight + "kg"}</option>`;
+        }).join("");
+        if (fleet.some(f => f.status === "Ready" || f.status === "Damaged")) {
+            showPopup(
+                `Pick a mission:<br><select id="mission-select">${missionOptions}</select><br>Pick a plane:<br><select id="plane-select"></select>`,
+                "Start Run",
+                "Cancel",
+                () => {
+                    const missionName = document.getElementById("mission-select").value;
+                    const planeName = document.getElementById("plane-select").value;
+                    const mission = missions.find(m => m.name === missionName);
+                    runMission(planeName, mission);
+                }
+            );
+            document.getElementById("mission-select").addEventListener("change", updatePlaneOptions);
+            updatePlaneOptions();
+        } else showPopup("No planes ready!", "OK");
+    }
+
+    function updatePlaneOptions() {
+        const missionName = document.getElementById("mission-select").value;
+        const mission = missions.find(m => m.name === missionName);
+        const cargoWeight = parseInt(mission.cargo) || (mission.type === "VIP Drop" || mission.type === "Extraction" ? 100 : mission.type === "Decoy Run" ? 50 : mission.type === "Hijack" ? 0 : 200);
+        const compatiblePlanes = fleet.filter(f => (f.status === "Ready" || f.status === "Damaged") && (mission.type === "Hijack" || f.cargo >= cargoWeight));
+        const planeSelect = document.getElementById("plane-select");
+        planeSelect.innerHTML = compatiblePlanes.length > 0
+            ? compatiblePlanes.map(f => `<option value="${f.name}">${f.name} (${f.type}, ${f.cargo}kg${f.condition.engines < 50 ? " - Damaged" : ""})</option>`).join("")
+            : `<option value="">No compatible planes</option>`;
+    }
+
+    function startSpecialMissions() {
+        setInterval(() => {
+            if (Math.random() < 0.1 && fleet.some(f => f.status === "Ready")) {
+                const mission = specialMissions[Math.floor(Math.random() * specialMissions.length)];
+                const cargoWeight = parseInt(mission.cargo) || (mission.type === "Hijack" ? 0 : 1000);
+                const plane = fleet.filter(f => f.status === "Ready" && f.cargo >= cargoWeight)[0];
+                if (plane) {
+                    showPopup(
+                        `Special Mission: ${mission.name} (${mission.location})<br>Reward: ${mission.reward} Bucks | Risk: ${mission.risk}% | Cargo: ${mission.cargo}<br>Plane: ${plane.name}`,
+                        "Take It",
+                        "Leave It",
+                        () => runMission(plane.name, mission)
+                    );
+                }
+            }
+        }, 30000);
+    }
+
+    function runMission(planeName, mission) {
+        const plane = fleet.find(f => f.name === planeName);
+        const cargoWeight = parseInt(mission.cargo) || (mission.type === "VIP Drop" || mission.type === "Extraction" ? 100 : mission.type === "Decoy Run" ? 50 : mission.type === "Hijack" ? 0 : 200);
+        if (plane && (mission.type === "Hijack" || cargoWeight <= plane.cargo)) {
+            plane.status = "In-Flight";
+            plane.flights++;
+            checkPlaneFailure(plane);
+            initFleet();
+            const speedMod = (plane.condition.engines < 50 ? 0.5 : 1) * (plane.pilot === "Rico" ? 1.2 : 1) * (plane.upgrades.includes("Turbo Engines") ? 1.3 : 1);
+            const baseETA = mission.distance / 100;
+            const activeMission = { plane: plane.name, mission: mission.name, location: mission.location, cargo: mission.cargo, progress: 0, status: "In-Flight", speed: speedMod, eta: baseETA / speedMod, events: [] };
+            missionsActive.push(activeMission);
+            initMissionsActive();
+
+            let ticks = 0;
+            let progressInterval = setInterval(() => {
+                ticks++;
+                activeMission.progress += (20 * speedMod) / (baseETA / 5);
+                activeMission.eta = (baseETA - ticks) / speedMod;
+                initMissionsActive();
+                let crashRisk = (plane.condition.wings < 40 ? 0.2 : 0) + (plane.condition.cockpit < 20 ? 0.5 : 0);
+                if (activeMission.progress >= 100) {
+                    clearInterval(progressInterval);
+                    completeMission(plane, mission, activeMission);
+                } else if (Math.random() < crashRisk) {
+                    clearInterval(progressInterval);
+                    crashPlane(plane, activeMission, "Mid-flight failure");
+                } else if (plane.condition.fuel < 60 && Math.random() < 0.15) {
+                    clearInterval(progressInterval);
+                    abortMission(plane, activeMission, "Fuel Leak");
+                } else if (Math.random() < 0.05 && deaHeat > 80 && !plane.upgrades.includes("Jammer")) {
+                    clearInterval(progressInterval);
+                    activeMission.events.push("DEA Chase");
+                    showPopup(`${plane.name} chased by DEA! Bribe $1000?`, "Yes", "No", () => bribeMidFlight(plane, activeMission, progressInterval));
+                } else if (Math.random() < 0.01 && mission.type !== "Hijack" && mission.type !== "Sabotage") {
+                    clearInterval(progressInterval);
+                    activeMission.events.push("Zeta Ambush");
+                    showPopup(`${plane.name} ambushed by Los Zetas! Fight ($500) or lose cargo?`, "Fight", "Lose", () => fightAmbush(plane, activeMission, progressInterval));
+                }
+            }, 1000);
+        } else showPopup("Cargo too big for that plane!", "OK");
+    }
+
+    function bribeMidFlight(plane, activeMission, interval) {
+        if (vaultBalance >= 1000) {
+            vaultBalance -= 1000;
+            document.getElementById("vault-balance").textContent = `Balance: ${vaultBalance.toFixed(2)}`;
+            activeMission.events.push("DEA Bribed");
+            setTimeout(() => runMissionInterval(plane, activeMission, interval), 1000);
+        } else {
+            abortMission(plane, activeMission, "DEA Bust");
+        }
+    }
+
+    function fightAmbush(plane, activeMission, interval) {
+        if (vaultBalance >= 500) {
+            vaultBalance -= 500;
+            document.getElementById("vault-balance").textContent = `Balance: ${vaultBalance.toFixed(2)}`;
+            activeMission.events.push("Zeta Repelled");
+            setTimeout(() => runMissionInterval(plane, activeMission, interval), 1000);
+        } else {
+            activeMission.cargo = "Lost";
+            activeMission.events.push("Cargo Stolen");
+            setTimeout(() => runMissionInterval(plane, activeMission, interval), 1000);
+        }
+    }
+
+    function runMissionInterval(plane, activeMission, interval) {
+        let ticks = Math.floor(activeMission.progress / (20 * activeMission.speed));
+        let newInterval = setInterval(() => {
+            ticks++;
+            activeMission.progress += 20 * activeMission.speed;
+            activeMission.eta = (activeMission.eta * activeMission.speed - ticks) / activeMission.speed;
+            initMissionsActive();
+            if (activeMission.progress >= 100) {
+                clearInterval(newInterval);
+                completeMission(plane, missions.find(m => m.name === activeMission.mission) || specialMissions.find(m => m.name === activeMission.mission), activeMission);
+            }
+        }, 1000);
+    }
+
+    function checkPlaneFailure(plane) {
+        if (insuranceFlights <= 0) {
+            const parts = ["engines", "gear", "fuel", "hydraulics", "radar", "wings", "cockpit"];
+            const degradeMod = ["Boeing 737-200", "Ilyushin IL-62", "Douglas DC-8", "Tupolev Tu-154", "Lockheed L-1011"].includes(plane.type) ? 1.5 : 1;
+            parts.forEach(part => {
+                plane.condition[part] -= (5 + Math.random() * 15) * degradeMod;
+                if (plane.condition[part] < 0) plane.condition[part] = 0;
+            });
+            initFleet();
+        }
+    }
+
+    function repairPlane(plane, part) {
+        const cost = Math.floor((100 - plane.condition[part]) * 20);
+        if (vaultBalance >= cost) {
+            vaultBalance -= cost;
+            plane.condition[part] = 100;
+            plane.status = Object.values(plane.condition).some(v => v < 50) ? "Damaged" : "Ready";
+            document.getElementById("vault-balance").textContent = `Balance: ${vaultBalance.toFixed(2)}`;
+            showPopup(`${part} on ${plane.name} repaired! Cost: ${cost}`, "OK");
+            initFleet();
+        } else showPopup("Not enough in vault!", "OK");
+    }
+
+    function scrapPlane(plane) {
+        const refund = aircraftShop.find(i => i.name === plane.type).usedPrice * 0.25;
+        bitflashBucks += refund;
+        fleet = fleet.filter(f => f !== plane);
+        showPopup(`${plane.name} scrapped! +${refund} Bucks`, "OK");
+        initFleet();
+    }
+
+    function abortMission(plane, activeMission, reason) {
+        activeMission.status = `Aborted (${reason})`;
+        plane.status = "Damaged";
+        showPopup(`${plane.name} aborted due to ${reason}!`, "OK");
+        emails.push({ from: "Sofia the Fixer", subject: "Run Aborted", body: `${plane.name} didn’t make it—${reason}. Fix that junk.` });
+        missionsActive = missionsActive.filter(m => m !== activeMission);
+        initMissionsActive();
+        initFleet();
+        updateEmails();
+    }
+
+    function crashPlane(plane, activeMission, reason) {
+        showPopup(`${plane.name} crashed due to ${reason}! Plane lost.`, "OK");
+        emails.push({ from: "El Jefe", subject: "You Idiot", body: `${plane.name} is gone. You owe me 20k Bucks.` });
+        if (plane.pilot === "Carlos" && Math.random() < 0.1) {
+            bitflashBucks -= 10000;
+            emails.push({ from: "Carlos", subject: "Adios", body: `Took 10k Bucks and ran, sucker.` });
+            plane.pilot = null;
+        }
+        fleet = fleet.filter(f => f !== plane);
+        missionsActive = missionsActive.filter(m => m !== activeMission);
+        initMissionsActive();
+        initFleet();
+        updateEmails();
+    }
+
+    function completeMission(plane, mission, activeMission) {
+        let crashRisk = (plane.condition.gear < 40 ? 0.6 : 0) + (plane.condition.engines < 20 ? 0.3 : 0) - (plane.upgrades.includes("Armor Plating") ? 0.2 : 0);
+        let deaRiskMod = (plane.upgrades.includes("Stealth Coating") ? -10 : 0) + (plane.upgrades.includes("Jammer") ? -25 : 0) + (plane.pilot === "Sofia" ? -15 : 0);
+        let weatherRiskMod = (currentWeather === "Fog" && plane.upgrades.includes("Night Vision") ? -15 : currentWeather === "Storm" ? 20 : 0);
+        deaHeat += mission.risk / 20;
+        if (deaHeat > 100) deaHeat = 100;
+        initHeat();
+
+        if (Math.random() < crashRisk) {
+            crashPlane(plane, activeMission, "Landing failure");
+        } else {
+            const totalRisk = Math.max(0, mission.risk + deaRiskMod + weatherRiskMod + (plane.condition.radar < 70 ? 15 : 0));
+            const success = Math.random() * 100 > totalRisk / 2;
+            if (success) {
+                bitflashBucks += mission.reward;
+                if (mission.type === "Hijack") {
+                    const newPlane = 
+                        mission.cargo.includes("IL-76") ? { name: `IL-76-Zeta${Math.random().toString(36).slice(2, 7)}`, type: "IL-76", cargo: 5000 } :
+                        mission.cargo.includes("737-200") ? { name: `737-200-Zeta${Math.random().toString(36).slice(2, 7)}`, type: "Boeing 737-200", cargo: 3000 } :
+                        mission.cargo.includes("DC-8") ? { name: `DC-8-Zeta${Math.random().toString(36).slice(2, 7)}`, type: "Douglas DC-8", cargo: 4000 } :
+                        mission.cargo.includes("Gulfstream G150") ? { name: `G150-Zeta${Math.random().toString(36).slice(2, 7)}`, type: "Gulfstream G150", cargo: 1000 } :
+                        { name: `C208B-Zeta${Math.random().toString(36).slice(2, 7)}`, type: "Cessna 208B", cargo: 200 };
+                    fleet.push({ ...newPlane, heat: 10, status: "Ready", flights: 0, condition: { engines: 80, gear: 80, fuel: 80, hydraulics: 80, radar: 80, wings: 80, cockpit: 80 }, upgrades: [], pilot: null });
+                    initFleet();
+                } else if (mission.type === "Decoy Run") {
+                    deaHeat -= 20;
+                    if (deaHeat < 0) deaHeat = 0;
+                    initHeat();
+                } else if (mission.type === "Sabotage") {
+                    emails.push({ from: "Los Zetas", subject: "You’ll Pay", body: `You hit our ${mission.cargo}. Watch your back.` });
+                }
+                if (Math.random() < 0.2) {
+                    bitflashBucks += 500;
+                    showPopup(`Run complete! +${mission.reward} Bucks + 500 Bonus Loot!`, "OK");
+                } else showPopup(`Run complete! +${mission.reward} Bucks`, "OK");
+                emails.push({ from: "Rico the Pilot", subject: "Good Run", body: `Nice work with ${plane.name}. Want another?` });
+                if (Math.random() < 0.1) {
+                    deaHeat += 10;
+                    emails.push({ from: "Los Zetas", subject: "Sabotage", body: `We hit ${plane.name}—good luck next time.` });
+                    plane.condition.wings -= 20;
+                }
+                plane.status = Object.values(plane.condition).some(v => v < 50) ? "Damaged" : "Ready";
+            } else if (deaHeat > 90 && Math.random() < 0.1) {
+                plane.status = "Seized";
+                showPopup("DEA bust! Plane seized.", "OK");
+                emails.push({ from: "El Jefe", subject: "You Screwed Up", body: `Lost ${plane.name} to the DEA. You owe me 10k Bucks.` });
+            } else {
+                plane.status = Object.values(plane.condition).some(v => v < 50) ? "Damaged" : "Ready";
+                showPopup("Run failed! Cargo lost, but plane’s safe.", "OK");
+                emails.push({ from: "Sofia the Fixer", subject: "Close Call", body: `${plane.name} made it back, but the cargo’s gone.` });
+            }
+        }
+        if (insuranceFlights > 0) insuranceFlights--;
+        missionsActive = missionsActive.filter(m => m !== activeMission);
+        initMissionsActive();
+        initFleet();
+        updateEmails();
+    }
+
+    function initMissionsActive() {
+        const activeList = document.getElementById("missions-active-list");
+        activeList.innerHTML = "";
+        missionsActive.forEach(mission => {
+            const div = document.createElement("div");
+            div.className = "active-mission";
+            div.innerHTML = `${mission.plane} to ${mission.location}<br>Cargo: ${mission.cargo} | Status: ${mission.status}<br>ETA: ${mission.eta.toFixed(1)}s${mission.events.length ? `<br>Events: ${mission.events.join(", ")}` : ""}<br><div class="progress-bar"><div class="progress" style="width: ${mission.progress}%"></div></div><button class="small-btn" onclick="abortMission(fleet.find(p => p.name === '${mission.plane}'), missionsActive.find(m => m.plane === '${mission.plane}'), 'Manual')">Abort</button>`;
+            activeList.appendChild(div);
+        });
+    }
+
+    function initFleet() {
+        const fleetList = document.getElementById("fleet-list");
+        fleetList.innerHTML = "";
+        fleet.forEach(plane => {
+            const div = document.createElement("div");
+            div.className = "fleet-item";
+            div.innerHTML = `${plane.name} (${plane.type})<br>Cargo: ${plane.cargo}kg | Heat: ${plane.heat}% | Status: ${plane.status}${plane.pilot ? `<br>Pilot: ${plane.pilot}` : ""}${plane.upgrades.length ? `<br>Upgrades: ${plane.upgrades.join(", ")}` : ""}<br>Condition: Engines ${plane.condition.engines}% <button class="small-btn" onclick="repairPlane(fleet.find(p => p.name === '${plane.name}'), 'engines')">Repair</button> | Gear ${plane.condition.gear}% <button class="small-btn" onclick="repairPlane(fleet.find(p => p.name === '${plane.name}'), 'gear')">Repair</button> | Fuel ${plane.condition.fuel}% <button class="small-btn" onclick="repairPlane(fleet.find(p => p.name === '${plane.name}'), 'fuel')">Repair</button> | Hydraulics ${plane.condition.hydraulics}% <button class="small-btn" onclick="repairPlane(fleet.find(p => p.name === '${plane.name}'), 'hydraulics')">Repair</button> | Radar ${plane.condition.radar}% <button class="small-btn" onclick="repairPlane(fleet.find(p => p.name === '${plane.name}'), 'radar')">Repair</button> | Wings ${plane.condition.wings}% <button class="small-btn" onclick="repairPlane(fleet.find(p => p.name === '${plane.name}'), 'wings')">Repair</button> | Cockpit ${plane.condition.cockpit}% <button class="small-btn" onclick="repairPlane(fleet.find(p => p.name === '${plane.name}'), 'cockpit')">Repair</button><br><button class="small-btn" onclick="scrapPlane(fleet.find(p => p.name === '${plane.name}'))">Scrap</button>`;
+            fleetList.appendChild(div);
+        });
+    }
+
+    function initAuction() {
+        const auctionList = document.getElementById("auction-list");
+        auctionList.innerHTML = "";
+        while (auctions.length < 3) {
+            const bigPlanes = [
+                { name: "IL-76", cargo: 5000, startBid: 50000 + Math.random() * 50000 },
+                { name: "747-200F", cargo: 10000, startBid: 200000 + Math.random() * 300000 },
+                { name: "Boeing 737-200", cargo: 3000, startBid: 40000 + Math.random() * 30000 }
+            ];
+            const smallPlanes = aircraftShop.filter(p => p.cargo < 1000);
+            const planePool = Math.random() < 0.2 ? bigPlanes : smallPlanes;
+            const plane = planePool[Math.floor(Math.random() * planePool.length)];
+            if (plane.name === "747-200F" && Math.random() > 0.05) continue;
+            if (plane.name === "IL-76" && Math.random() > 0.1) continue;
+            auctions.push({ name: `${plane.name}-Auction${auctions.length + 1}`, type: plane.name, cargo: plane.cargo, bid: plane.startBid || plane.usedPrice, time: 30 + Math.floor(Math.random() * 30), aiBidders: 3 + Math.floor(Math.random() * 3) });
+        }
+        auctions.forEach(auction => {
+            const div = document.createElement("div");
+            div.className = "auction-item";
+            div.id = `auction-${auction.name}`;
+            div.innerHTML = `${auction.name} - Cargo: ${auction.cargo}kg<br>Bid: ${auction.bid} Bucks | Time: <span id="time-${auction.name}">${auction.time}s</span><br><button class="small-btn" onclick="bidAuction('${auction.name}', ${auction.bid + 500})">Bid +500</button>`;
+            auctionList.appendChild(div);
+            const interval = setInterval(() => {
+                auction.time--;
+                if (auction.time <= 0) {
+                    clearInterval(interval);
+                    const resultDiv = document.createElement("div");
+                    resultDiv.className = "auction-item";
+                    resultDiv.innerHTML = `${auction.name} - Sold to AI for ${auction.bid} Bucks`;
+                    auctionList.replaceChild(resultDiv, document.getElementById(`auction-${auction.name}`));
+                    auctions = auctions.filter(a => a !== auction);
+                    setTimeout(() => initAuction(), 3000);
+                } else {
+                    if (Math.random() < 0.3 && auction.aiBidders > 0) {
+                        auction.bid += 500 + Math.floor(Math.random() * 4500);
+                        auction.aiBidders--;
+                    }
+                    document.getElementById(`time-${auction.name}`).textContent = `${auction.time}s`;
+                    div.querySelector("button").textContent = `Bid +500 (${auction.bid + 500})`;
+                }
+            }, 1000);
+        });
+    }
+
+    function bidAuction(auctionName, bidAmount) {
+        const auction = auctions.find(a => a.name === auctionName);
+        const auctionDiv = document.getElementById(`auction-${auction.name}`);
+        if (bitflashBucks >= bidAmount) {
+            bitflashBucks -= bidAmount;
+            auction.bid = bidAmount;
+            auction.time += 5;
+            if (auction.time > 60) auction.time = 60;
+            if (Math.random() < 0.2) {
+                auction.bid += 1000 + Math.floor(Math.random() * 4000);
+                auctionDiv.innerHTML = `${auction.name} - Cargo: ${auction.cargo}kg<br>Bid: ${auction.bid} Bucks (AI Outbid) | Time: <span id="time-${auction.name}">${auction.time}s</span><br><button class="small-btn" onclick="bidAuction('${auction.name}', ${auction.bid + 500})">Bid +500</button>`;
+            }
+            if (auction.aiBidders === 0 && auction.time <= 5) {
+                fleet.push({ name: `${auction.type}-${Math.random().toString(36).slice(2, 7)}`, type: auction.type, cargo: auction.cargo, heat: 10, status: "Ready", flights: 0, condition: { engines: 70, gear: 70, fuel: 70, hydraulics: 70, radar: 70, wings: 70, cockpit: 70 }, upgrades: [], pilot: null });
+                const resultDiv = document.createElement("div");
+                resultDiv.className = "auction-item";
+                resultDiv.innerHTML = `${auction.name} - You Won for ${auction.bid} Bucks!`;
+                auctionDiv.parentNode.replaceChild(resultDiv, auctionDiv);
+                auctions = auctions.filter(a => a !== auction);
+                initFleet();
+                setTimeout(() => initAuction(), 3000);
+            }
+        } else {
+            auctionDiv.innerHTML += `<br>Not enough Bucks!`;
+        }
+    }
+
+    function initHeat() {
+        document.getElementById("heat-progress").style.width = `${deaHeat}%`;
+        document.getElementById("heat-level").textContent = `Heat: ${deaHeat.toFixed(0)}%`;
+    }
+
+    function bribeDEA() {
+        const cost = 1000 + Math.floor(Math.random() * 4000);
+        if (vaultBalance >= cost) {
+            vaultBalance -= cost;
+            deaHeat -= 30;
+            if (deaHeat < 0) deaHeat = 0;
+            document.getElementById("vault-balance").textContent = `Balance: ${vaultBalance.toFixed(2)}`;
+            showPopup(`DEA bribed! Heat down by 30% (-${cost})`, "OK");
+            initHeat();
+        } else showPopup("Not enough in vault!", "OK");
+    }
+
+    function buyInsurance() {
+        if (vaultBalance >= 1000) {
+            vaultBalance -= 1000;
+            insuranceFlights = 5;
+            document.getElementById("vault-balance").textContent = `Balance: ${vaultBalance.toFixed(2)}`;
+            showPopup("Insurance bought! 5 flights protected.", "OK");
+        } else showPopup("Not enough in vault!", "OK");
+    }
+
+    function updateWeather() {
+        if (weatherRadar) {
+            const weathers = ["Clear", "Storm", "Fog"];
+            currentWeather = weathers[Math.floor(Math.random() * weathers.length)];
+            document.getElementById("weather-forecast").textContent = currentWeather;
+        } else document.getElementById("weather-forecast").textContent = "Unknown";
+        setTimeout(updateWeather, 30000);
+    }
+
+    function buyWeatherRadar() {
+        if (vaultBalance >= 2000) {
+            vaultBalance -= 2000;
+            weatherRadar = true;
+            document.getElementById("vault-balance").textContent = `Balance: ${vaultBalance.toFixed(2)}`;
+            showPopup("Weather Radar installed!", "OK");
+            updateWeather();
+        } else showPopup("Not enough in vault!", "OK");
+    }
+
+    function initHeist() {
+        const map = document.getElementById("heist-map");
+        for (let i = 0; i < 5; i++) {
+            const dot = document.createElement("div");
+            dot.className = "heist-dot";
+            dot.style.left = `${Math.random() * 90}%`;
+            dot.style.top = `${Math.random() * 90}%`;
+            map.appendChild(dot);
+            setInterval(() => {
+                dot.style.left = `${Math.random() * 90}%`;
+                dot.style.top = `${Math.random() * 90}%`;
+            }, 2000);
+        }
+    }
+
+    function fundHeist() {
+        if (bitflashBucks >= 50) {
+            bitflashBucks -= 50;
+            showPopup("Heist funded! Loot pending...", "OK");
+        } else showPopup("Need 50 Bucks!", "OK");
+    }
+
+    function initNews() {
+        updateNews();
+        setInterval(updateNews, 5000);
+    }
+
+    function updateNews() {
+        const feed = document.getElementById("news-feed");
+        feed.innerHTML = "";
+        newsHeadlines.forEach(headline => {
+            const div = document.createElement("div");
+            div.className = "news-item";
+            div.textContent = headline;
+            feed.appendChild(div);
+        });
+    }
+
+    function launderCrypto() {
+        const amount = parseFloat(document.getElementById("launder-amount").value);
+        if (amount > 0) {
+            bitflashBucks -= amount * 100;
+            vaultBalance += amount * 50;
+            document.getElementById("vault-balance").textContent = `Balance: ${vaultBalance.toFixed(2)}`;
+            showPopup(`Laundered ${amount} BTC!`, "OK");
+            document.getElementById("launder-amount").value = "";
+        }
+    }
+
+    function initVip() {
+        const vipList = document.getElementById("vip-tiers");
+        vipList.innerHTML = "";
+        vipTiers.forEach(tier => {
+            const div = document.createElement("div");
+            div.className = "item";
+            div.innerHTML = `${tier.name} - $${tier.price}<br>${tier.perk}`;
+            div.onclick = () => buyVip(tier);
+            vipList.appendChild(div);
+        });
+    }
+
+    function buyVip(tier) {
+        if (bitflashBucks >= tier.price) {
+            bitflashBucks -= tier.price;
+            showPopup(`Joined ${tier.name}! ${tier.perk} unlocked.`, "OK");
+        } else showPopup("Not enough Bucks!", "OK");
+    }
+
+    function initBounty() {
+        const bountyList = document.getElementById("bounty-list");
+        bountyList.innerHTML = "";
+        bounties.forEach(bounty => {
+            const div = document.createElement("div");
+            div.className = "item";
+            div.innerHTML = `${bounty.name} - $${bounty.reward}`;
+            div.onclick = () => claimBounty(bounty);
+            bountyList.appendChild(div);
+        });
+    }
+
+    function claimBounty(bounty) {
+        if (bitflashBucks >= 100) {
+            bitflashBucks -= 100;
+            showPopup(`Claimed ${bounty.name}! Reward pending...`, "OK");
+        } else showPopup("Need 100 Bucks!", "OK");
+    }
+
+    function initCodes() {
+        document.getElementById("codes-list").innerHTML = "<p>Enter a code!</p>";
+    }
+
+    function submitCode() {
+        const code = document.getElementById("code-input").value;
+        if (cartelCodes.includes(code)) {
+            bitflashBucks += 50;
+            showPopup("Code accepted! +50 Bucks!", "OK");
+        } else showPopup("Invalid! $5 to retry?", "Yes", "No", () => bitflashBucks -= 5);
+        document.getElementById("code-input").value = "";
+    }
+
+    function initVault() {
+        setInterval(() => {
+            vaultBalance += Math.random() * 10 * vaultInterestRate;
+            document.getElementById("vault-balance").textContent = `Balance: ${vaultBalance.toFixed(2)}`;
+        }, 5000);
+    }
+
+    function depositVault() {
+        const amount = parseFloat(document.getElementById("vault-amount").value);
+        if (amount > 0 && bitflashBucks >= amount) {
+            bitflashBucks -= amount;
+            vaultBalance += amount;
+            document.getElementById("vault-balance").textContent = `Balance: ${vaultBalance.toFixed(2)}`;
+            showPopup(`Deposited ${amount}!`, "OK");
+            document.getElementById("vault-amount").value = "";
+        } else showPopup("Not enough Bucks!", "OK");
+    }
+
+    function withdrawVault() {
+        const amount = parseFloat(document.getElementById("vault-amount").value);
+        if (amount > 0 && vaultBalance >= amount) {
+            vaultBalance -= amount;
+            bitflashBucks += amount * 0.9;
+            document.getElementById("vault-balance").textContent = `Balance: ${vaultBalance.toFixed(2)}`;
+            showPopup(`Withdrew ${amount} (-10% tax)!`, "OK");
+            document.getElementById("vault-amount").value = "";
+        } else showPopup("Not enough in vault!", "OK");
+    }
+
+    function decodeRadio() {
+        if (bitflashBucks >= 10) {
+            bitflashBucks -= 10;
+            showPopup("Decoded: 'Drop at 0300' (Useless)", "OK");
+        } else showPopup("Need 10 Bucks!", "OK");
+    }
+
+    function initLeaderboard() {
+        const leaderList = document.getElementById("leaderboard-list");
+        leaderList.innerHTML = "";
+        leaderboard.forEach(leader => {
+            const div = document.createElement("div");
+            div.className = "leader-item";
+            div.innerHTML = `${leader.name} - $${leader.earnings.toLocaleString()}`;
+            leaderList.appendChild(div);
+        });
+    }
+
+    function showPopup(message, ...buttons) {
+        const popup = document.getElementById("popup");
+        popup.innerHTML = `<p>${message}</p>`;
+        buttons.forEach((btn, i) => {
+            const button = document.createElement("button");
+            button.textContent = btn === "Yes" ? "Yes" : btn === "No" ? "No" : btn === "Start Run" ? "Start Run" : btn === "Take It" ? "Take It" : btn === "Leave It" ? "Leave It" : btn === "Fight" ? "Fight" : btn === "Lose" ? "Lose" : "OK";
+            button.onclick = () => {
+                if (typeof buttons[buttons.length - 1] === "function" && btn !== "Cancel" && btn !== "No" && btn !== "Leave It" && btn !== "Lose") buttons[buttons.length - 1]();
+                else if (btn === "Yes" && i === 0) buttons[buttons.length - 1]();
+                popup.style.display = "none";
+            };
+            popup.appendChild(button);
+        });
+        popup.style.display = "flex";
+    }
+
+    function openAdmin() {
+        showPopup("Password: <input id='admin-password' type='password'><button onclick='checkAdminPassword()'>Submit</button>", "Cancel");
+    }
+
+    function checkAdminPassword() {
+        if (document.getElementById("admin-password").value === "5820320") {
+            document.getElementById("popup").style.display = "none";
+            document.getElementById("main-container").style.display = "none";
+            document.getElementById("admin-screen").innerHTML = `
+                <div id="admin-content">
+                    <h1>Admin Mode</h1>
+                    <label>Bitflash Bucks:</label><input id="admin-bucks" type="number">
+                    <label>Vault Balance:</label><input id="admin-vault" type="number">
+                    <label>Vault Interest Rate (0-1):</label><input id="admin-vault-rate" type="number" step="0.01" min="0" max="1">
+                    <label>Cartel Codes (one per line):</label><textarea id="admin-codes"></textarea>
+                    <label>News Headlines (one per line):</label><textarea id="admin-news"></textarea>
+                    <label>Shop Items (name,price,desc):</label><textarea id="admin-shop"></textarea>
+                    <label>Aircraft Shop (name,usedPrice,newPrice,cargo):</label><textarea id="admin-aircraft"></textarea>
+                    <label>Upgrades (name,price,desc):</label><textarea id="admin-upgrades"></textarea>
+                    <label>Pilots (name,cost,bonus,desc):</label><textarea id="admin-pilots"></textarea>
+                    <label>Fleet (name,type,cargo,heat):</label><textarea id="admin-fleet"></textarea>
+                    <label>Missions (name,type,location,cargo,reward,risk,distance):</label><textarea id="admin-missions"></textarea>
+                    <label>Special Missions (name,type,location,cargo,reward,risk,distance):</label><textarea id="admin-special"></textarea>
+                    <label>AI Aggression (1-10):</label><input id="admin-ai" type="number" min="1" max="10">
+                    <button onclick="saveAdminSettings()">Save</button>
+                    <button onclick="exitAdminMode()">Back</button>
+                </div>`;
+            document.getElementById("admin-screen").style.display = "flex";
+            loadAdminSettings();
+        } else showPopup("Wrong password!", "OK");
+    }
+
+    function loadAdminSettings() {
+        document.getElementById("admin-bucks").value = bitflashBucks;
+        document.getElementById("admin-vault").value = vaultBalance;
+        document.getElementById("admin-vault-rate").value = vaultInterestRate;
+        document.getElementById("admin-codes").value = cartelCodes.join("\n");
+        document.getElementById("admin-news").value = newsHeadlines.join("\n");
+        document.getElementById("admin-shop").value = shopItems.map(i => `${i.name},${i.price},${i.desc}`).join("\n");
+        document.getElementById("admin-aircraft").value = aircraftShop.map(a => `${a.name},${a.usedPrice},${a.newPrice},${a.cargo}`).join("\n");
+        document.getElementById("admin-upgrades").value = upgrades.map(u => `${u.name},${u.price},${u.desc}`).join("\n");
+        document.getElementById("admin-pilots").value = pilots.map(p => `${p.name},${p.cost},${p.bonus},${p.desc}`).join("\n");
+        document.getElementById("admin-fleet").value = fleet.map(f => `${f.name},${f.type},${f.cargo},${f.heat}`).join("\n");
+        document.getElementById("admin-missions").value = missions.map(m => `${m.name},${m.type},${m.location},${m.cargo},${m.reward},${m.risk},${m.distance}`).join("\n");
+        document.getElementById("admin-special").value = specialMissions.map(m => `${m.name},${m.type},${m.location},${m.cargo},${m.reward},${m.risk},${m.distance}`).join("\n");
+        document.getElementById("admin-ai").value = aiAggression;
+    }
+
+    function saveAdminSettings() {
+        bitflashBucks = parseFloat(document.getElementById("admin-bucks").value) || 0;
+        vaultBalance = parseFloat(document.getElementById("admin-vault").value) || 0;
+        vaultInterestRate = parseFloat(document.getElementById("admin-vault-rate").value) || 0.1;
+        cartelCodes = document.getElementById("admin-codes").value.split("\n").filter(c => c);
+        newsHeadlines = document.getElementById("admin-news").value.split("\n").filter(n => n);
+        shopItems = document.getElementById("admin-shop").value.split("\n").filter(s => s).map(line => {
+            const [name, price, desc] = line.split(",");
+            return { name, price: parseInt(price) || 0, desc };
+        });
+        aircraftShop = document.getElementById("admin-aircraft").value.split("\n").filter(a => a).map(line => {
+            const [name, usedPrice, newPrice, cargo] = line.split(",");
+            return { name, usedPrice: parseInt(usedPrice) || 0, newPrice: parseInt(newPrice) || 0, cargo: parseInt(cargo) || 0 };
+        });
+        upgrades = document.getElementById("admin-upgrades").value.split("\n").filter(u => u).map(line => {
+            const [name, price, desc] = line.split(",");
+            return { name, price: parseInt(price) || 0, desc };
+        });
+        pilots = document.getElementById("admin-pilots").value.split("\n").filter(p => p).map(line => {
+            const [name, cost, bonus, desc] = line.split(",");
+            return { name, cost: parseInt(cost) || 0, bonus, desc };
+        });
+        fleet = document.getElementById("admin-fleet").value.split("\n").filter(f => f).map(line => {
+            const [name, type, cargo, heat] = line.split(",");
+            return { name, type, cargo: parseInt(cargo) || 0, heat: parseInt(heat) || 0, status: "Ready", flights: 0, condition: { engines: 100, gear: 100, fuel: 100, hydraulics: 100, radar: 100, wings: 100, cockpit: 100 }, upgrades: [], pilot: null };
+        });
+        missions = document.getElementById("admin-missions").value.split("\n").filter(m => m).map(line => {
+            const [name, type, location, cargo, reward, risk, distance] = line.split(",");
+            return { name, type, location, cargo, reward: parseInt(reward) || 0, risk: parseInt(risk) || 0, distance: parseInt(distance) || 0 };
+        });
+        specialMissions = document.getElementById("admin-special").value.split("\n").filter(m => m).map(line => {
+            const [name, type, location, cargo, reward, risk, distance] = line.split(",");
+            return { name, type, location, cargo, reward: parseInt(reward) || 0, risk: parseInt(risk) || 0, distance: parseInt(distance) || 0 };
+        });
+        aiAggression = parseInt(document.getElementById("admin-ai").value) || 5;
+        if (aiAggression < 1) aiAggression = 1;
+        if (aiAggression > 10) aiAggression = 10;
+        showPopup("Settings saved!", "OK");
+        initSite();
+        exitAdminMode();
+    }
+
+    function exitAdminMode() {
+        document.getElementById("admin-screen").style.display = "none";
+        document.getElementById("main-container").style.display = "block";
+    }
+
+    window.onload = initSite;
+</script>
+</body>
+</html>
